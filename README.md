@@ -1,50 +1,129 @@
-# YouTube Scrapper
+# YouTube Channel Video Exporter
 
-This script extracts data from a specified YouTube channel using the YouTube Data API v3. It gathers information such as video URLs, thumbnails, titles, views, and upload times of the latest videos and saves it into a CSV file.
+A Python script that retrieves metadata for up to five recent videos from a specified YouTube channel and exports it to CSV. Despite the repository name, it uses the **YouTube Data API v3**, rather than scraping HTML pages.
 
-## Features
+## What it does
 
-1. Extracts the following details for the latest 5 videos on a YouTube channel:
-   - **Video URLs**
-   - **Thumbnail URLs**
-   - **Video Titles**
-   - **View Counts**
-   - **Upload Times**
-2. Saves the extracted data into a CSV file (`storage.csv`) for easy analysis and visualization.
+- Searches channel videos in newest-first order with `maxResults=5`.
+- Retrieves watch links, default thumbnail links, titles, view counts, and publication timestamps.
+- Prints collected lists to the terminal.
+- Writes one row per video to `storage.csv` using UTF-8 with BOM for spreadsheet compatibility.
 
-## Requirements
+It does not download videos or images. There is no graphical interface; the output table below provides a preview.
 
-- Python 3.x
-- `google-api-python-client`
+## Example output
 
-## Installation
+The repository includes [sample_scrapped_data.csv](sample_scrapped_data.csv). These are historical sample values, not a fresh API response:
 
-1. Clone the repository or download the script.
-2. Install the required Python package:
-   ```bash
-   pip install google-api-python-client
-   ```
+| Title | Views | Published (UTC) |
+| --- | ---: | --- |
+| Justice. | 124433 | 2025-01-13T21:33:37Z |
+| The Awoken Giant Terrorizing English Football | 171964 | 2025-01-10T18:32:56Z |
+| Manchester Is BROKEN | 175139 | 2024-12-27T19:45:12Z |
 
-## Usage
+The complete output header is:
 
-1. Obtain an API key from the [Google Cloud Console](https://console.cloud.google.com/).
-2. Replace `YOUR_API_KEY` with your actual API key.
-3. Replace `CHANNEL_ID` with the YouTube channel ID you want to analyze.
-4. Run the script:
-   ```bash
-   python script_name.py
-   ```
+```csv
+Video,Thumbnail,Title,Views,Time
+```
 
-## Output
+`Video` is the watch URL, `Thumbnail` is an image URL, and `Time` is the publication timestamp returned by the API. Titles can retain HTML entities, as one bundled sample row demonstrates.
 
-The script generates a `storage.csv` file with the following columns:
+## How to run
 
-| Video URL                        | Thumbnail URL                   | Video Title             | Views  | Upload Time          |
-|----------------------------------|---------------------------------|-------------------------|--------|----------------------|
-| https://www.youtube.com/watch?v= | https://i.ytimg.com/vi/...      | Example Title           | 12345  | 2025-01-01T00:00:00Z|
+### 1. Download and install
 
-## Notes
+Use Git and Python 3; Python 3.11 or 3.12 is a practical starting point. No pinned requirements file is included.
 
-- Ensure that your API key has the appropriate permissions to access the YouTube Data API.
-- The `maxResults` parameter is set to 5 but can be adjusted as needed.
-- Modify the script as necessary to suit your specific use case.
+```bash
+git clone https://github.com/SambhavPyakurel/Youtube_Scrapper.git
+cd Youtube_Scrapper
+```
+
+**Windows PowerShell:**
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install google-api-python-client
+```
+
+**macOS / Linux:**
+
+```bash
+python3 -m venv .venv
+./.venv/bin/python -m pip install google-api-python-client
+```
+
+### 2. Configure the API and channel
+
+Create a Google Cloud project, enable the YouTube Data API v3, and create an API key using Google's [getting-started instructions](https://developers.google.com/youtube/v3/getting-started). Find the target channel's ID, rather than its display name or `@handle`.
+
+Replace these placeholders in your local `scrapper.py`:
+
+```python
+API_KEY = 'YOUR_API_KEY'
+channel_id = 'CHANNEL_ID'
+```
+
+The script reads these constants directly, not a `.env` file or environment variables. Keep real keys out of commits and screenshots. Environment-based configuration would be a useful improvement.
+
+### 3. Run the script
+
+**Windows PowerShell:**
+
+```powershell
+.\.venv\Scripts\python.exe scrapper.py
+```
+
+**macOS / Linux:**
+
+```bash
+./.venv/bin/python scrapper.py
+```
+
+Run from the repository root to create `storage.csv` there. Each successful run **overwrites** that file. Open it in a spreadsheet application or data-analysis tool. Live execution requires internet access and an enabled API project with available quota.
+
+## Implementation
+
+| Function | Data retrieved |
+| --- | --- |
+| `extract_video_urls` | Watch URLs from search-result IDs |
+| `extract_thumbnail_urls` | Default thumbnail URLs from search snippets |
+| `extract_video_titles` | Titles from search snippets |
+| `extract_video_views` | View counts from a batched video-statistics request |
+| `extract_upload_times` | Publication timestamps from individual video requests |
+
+Five lists are combined with `zip()` and written with Python's standard `csv` module. With five returned videos, the implementation performs five search requests and six video-detail requests. It does not paginate through the channel's full history.
+
+## Verification and limitations
+
+Source was inspected and syntax-checked, and bundled sample output was reviewed. **No live API run was performed** because no configured key was provided. The historical sample does not establish that today's requests will succeed.
+
+- **API compatibility:** Two search calls use `part='id'`, while the current [search.list reference](https://developers.google.com/youtube/v3/docs/search/list) instructs clients to set `part` to `snippet`. If rejected, update those requests to the documented value and verify the returned IDs.
+- **Repeated requests:** Fields are collected through separate searches. Results may shift between calls, and lists are joined by position instead of video ID. Rows can become misaligned; `zip()` silently truncates to the shortest list.
+- **Limited coverage:** Each search requests five results without pagination. Changing the limit requires reviewing all search calls and the API's allowed values.
+- **Failures:** There is no retry logic or handling for invalid keys, missing fields, unavailable channels, quota errors, or empty video-detail responses. Exceptions stop execution.
+- **Imports:** Importing the script also builds the client and runs requests; there is no `if __name__ == '__main__'` guard.
+- **Authentication troubleshooting:** Check the key, enabled API, key restrictions, and quota against the returned error.
+- **Missing module:** Install `google-api-python-client` with the same interpreter used to launch the script.
+
+## Project files
+
+```text
+Youtube_Scrapper/
+|-- scrapper.py              # API requests and CSV export
+|-- sample_scrapped_data.csv # Historical example output
+`-- README.md
+```
+
+`storage.csv` is generated at runtime. There is no dependency lock, automated test suite, or CLI argument parser.
+
+## Can this go on my resume?
+
+**Yes—as a small API-integration and data-export project**, if you can explain the requests and CSV workflow. It is a supporting project rather than the strongest flagship project in its current form.
+
+Suggested bullet, adjusted to your contribution:
+
+> Developed a Python utility using the YouTube Data API to collect channel video metadata and export titles, links, view counts, and publication timestamps to CSV.
+
+Before emphasizing reliability or scale, fetch IDs once, join by ID, batch requests, add pagination and error handling, move credentials out of source, and validate a live run. Avoid claiming a production scraper, complete channel archive, or large-scale analytics pipeline.
