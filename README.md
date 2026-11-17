@@ -117,13 +117,3 @@ Youtube_Scrapper/
 ```
 
 `storage.csv` is generated at runtime. There is no dependency lock, automated test suite, or CLI argument parser.
-
-## Can this go on my resume?
-
-**Yes—as a small API-integration and data-export project**, if you can explain the requests and CSV workflow. It is a supporting project rather than the strongest flagship project in its current form.
-
-Suggested bullet, adjusted to your contribution:
-
-> Developed a Python utility using the YouTube Data API to collect channel video metadata and export titles, links, view counts, and publication timestamps to CSV.
-
-Before emphasizing reliability or scale, fetch IDs once, join by ID, batch requests, add pagination and error handling, move credentials out of source, and validate a live run. Avoid claiming a production scraper, complete channel archive, or large-scale analytics pipeline.
